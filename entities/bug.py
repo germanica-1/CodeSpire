@@ -4,8 +4,11 @@ from utils.colors import RED
 
 class Bug:
     def __init__(self, x, y, can_shoot=False):
+        # Randomly pick between Ship4.png and Ship5.png
+        ship_image = random.choice(["assets/images/Ship4.png", "assets/images/Ship5.png"])
+
         # Load bug spaceship image
-        self.image = pygame.image.load("assets/images/Ship4.png").convert_alpha()
+        self.image = pygame.image.load(ship_image).convert_alpha()
         self.image = pygame.transform.rotate(self.image, 90)  # rotate 90° to face down
         self.image = pygame.transform.scale(self.image, (100, 100))  # resize
         self.rect = self.image.get_rect(center=(x, y))

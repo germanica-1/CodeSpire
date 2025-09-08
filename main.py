@@ -34,6 +34,38 @@ def draw_ui(screen, player):
         shield_text = font.render("Shield: ACTIVE", True, (0,255,0))
         screen.blit(shield_text, (10, 70))
 
+
+class Explosion:
+    def __init__(self, x, y):
+        # Load all explosion frames
+        self.frames = []
+        for i in range(1, 12):  # Explostion.png → Explostion1.png
+            img = pygame.image.load(f"assets/images/Explosions/Explosion3_{i}.png").convert_alpha()
+            img = pygame.transform.scale(img, (100, 100))  # match bug size
+            self.frames.append(img)
+
+        self.index = 0
+        self.image = self.frames[self.index]
+        self.rect = self.image.get_rect(center=(x, y))
+        self.animation_speed = 50  # ms per frame
+        self.last_update = pygame.time.get_ticks()
+        self.finished = False
+
+    def update(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_update > self.animation_speed:
+            self.last_update = current_time
+            self.index += 1
+            if self.index < len(self.frames):
+                self.image = self.frames[self.index]
+            else:
+                self.finished = True
+
+    def draw(self, screen):
+        if not self.finished:
+            screen.blit(self.image, self.rect)
+
+
 # Background Music
 pygame.mixer.music.load("assets/sounds/space_bg.mp3")
 pygame.mixer.music.set_volume(0.3)
@@ -49,16 +81,17 @@ bg_speed = 2
 # Game Entities
 player = Player(WIDTH//2, HEIGHT-80)
 
-# Bugs: spaced out vertically and horizontally
+# Bugs
 num_bugs = 5
 bugs = []
 for i in range(num_bugs):
     can_shoot = random.random() < 0.4
     x = random.randint(50, WIDTH-50)
-    y = random.randint(-300, -50) - i * 120  # vertical spacing
+    y = random.randint(-300, -50) - i * 120
     bugs.append(Bug(x, y, can_shoot))
 
 stars = [Star() for _ in range(100)]
+explosions = []  # EXPLOSION ADDED
 
 running = True
 while running:
@@ -74,7 +107,7 @@ while running:
     screen.blit(bg_image, (0, bg_y1))
     screen.blit(bg_image, (0, bg_y2))
 
-    # Update and draw stars
+    # Stars
     for star in stars:
         star.update()
         star.draw(screen)
@@ -102,10 +135,12 @@ while running:
             correct = ask_question(screen)
             if correct:
                 play_correct()
+                explosions.append(Explosion(bug.rect.centerx, bug.rect.centery))  #  EXPLOSION ADDED
                 bugs.remove(bug)
                 player.get_shield_chance()
             else:
                 play_incorrect()
+                explosions.append(Explosion(bug.rect.centerx, bug.rect.centery))  #  EXPLOSION ADDED
                 player.take_damage()
                 bugs.remove(bug)
 
@@ -118,7 +153,6 @@ while running:
         for b_bullet in bug.bullets[:]:
             if player.rect.colliderect(b_bullet):
                 bug.bullets.remove(b_bullet)
-                # Ask question when hit by bug bullet
                 correct = ask_question(screen)
                 if correct:
                     play_correct()
@@ -127,9 +161,15 @@ while running:
                     play_incorrect()
                     player.take_damage()
 
-    # Draw Player
+    # Update explosions
+    for explosion in explosions[:]:
+        explosion.update()
+        explosion.draw(screen)
+        if explosion.finished:
+            explosions.remove(explosion)
+
+    # Draw Player + UI
     player.draw(screen)
-    # Draw UI
     draw_ui(screen, player)
 
     pygame.display.flip()

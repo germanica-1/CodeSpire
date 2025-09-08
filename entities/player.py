@@ -24,7 +24,10 @@ class Player:
 
         # Load bullet image
         self.bullet_image = pygame.image.load("assets/images/laserBullet.png").convert_alpha()
-        self.bullet_image = pygame.transform.scale(self.bullet_image, (90, 90))
+        self.bullet_image = pygame.transform.scale(self.bullet_image, (30, 60))  # smaller so it fits better
+
+        # Load shooting sound
+        self.shoot_sound = pygame.mixer.Sound("assets/sounds/player_shoot_1.mp3")
 
     def handle_input(self, keys):
         current_time = pygame.time.get_ticks()
@@ -50,8 +53,11 @@ class Player:
             self.can_shoot = True
 
     def shoot(self):
+        # Play shooting sound
+        self.shoot_sound.play()
+
         # Create bullet as a dict containing rect and image
-        bullet_rect = pygame.Rect(self.rect.centerx-5, self.rect.top-10, 10, 20)
+        bullet_rect = self.bullet_image.get_rect(center=(self.rect.centerx, self.rect.top))
         self.bullets.append({"rect": bullet_rect, "image": self.bullet_image})
 
     def take_damage(self):
