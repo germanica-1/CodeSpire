@@ -9,14 +9,14 @@ class Player:
         self.image = pygame.transform.rotate(self.image, 360)  # vertical orientation
         self.image = pygame.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center=(x, y))
-        self.speed = 5
+        self.speed = 5 # player speed
 
         # Health & shield
         self.health = 3
         self.max_health = 3
         self.has_shield = False
 
-        # Shooting
+        # Shooting for player
         self.bullets = []  # each bullet will be a dict with rect and image
         self.can_shoot = True
         self.shoot_cooldown = 300
