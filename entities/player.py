@@ -9,7 +9,7 @@ class Player:
         self.image = pygame.transform.rotate(self.image, 360)  # vertical orientation
         self.image = pygame.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center=(x, y))
-        self.speed = 5 # player speed
+        self.speed = 3 # player speed
 
         # Health & shield
         self.health = 3
