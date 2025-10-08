@@ -32,10 +32,37 @@ def draw_ui(screen, player):
     pygame.draw.rect(screen, (255, 0, 0), (10, 40, fill, bar_height))
     pygame.draw.rect(screen, (255, 255, 255), (10, 40, bar_width, bar_height), 2)
 
-    # Shield Indicator
+    # Shield Indicator (use icon instead of just text)
     if player.has_shield:
-        shield_text = font.render("Shield: ACTIVE", True, (0, 255, 0))
-        screen.blit(shield_text, (10, 70))
+        player.draw_shield_icon(screen)  # <-- draw the icon beside the health bar
+
+
+def game_over_screen(screen):
+    """Display game over screen with retry option"""
+    screen.fill(BLACK)
+    
+    font_large = pygame.font.Font(None, 72)
+    font_medium = pygame.font.Font(None, 36)
+    
+    game_over_text = font_large.render("GAME OVER", True, (255, 0, 0))
+    retry_text = font_medium.render("Press R to Retry or Q to Quit", True, (255, 255, 255))
+    
+    screen.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - 50))
+    screen.blit(retry_text, (WIDTH//2 - retry_text.get_width()//2, HEIGHT//2 + 50))
+    
+    pygame.display.flip()
+    
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    return "retry"
+                elif event.key == pygame.K_q:
+                    return "quit"
 
 
 class Explosion:
@@ -69,7 +96,7 @@ class Explosion:
 
 
 def game_loop():
-    """Run one play session. Returns when player quits to menu or exits game."""
+    """Run one play session. Returns when player quits to menu, exits, or game over."""
     # Start/ensure game music is playing only here
     pygame.mixer.music.load("assets/sounds/space_bg.mp3")
     pygame.mixer.music.set_volume(0.3)
@@ -101,6 +128,12 @@ def game_loop():
     while running:
         clock.tick(FPS)
 
+        # Check if player is dead
+        if player.health <= 0:
+            pygame.mixer.music.stop()
+            choice = game_over_screen(screen)
+            return choice  # either "retry" or "quit"
+
         # Scrolling background
         bg_y1 += bg_speed
         bg_y2 += bg_speed
@@ -119,35 +152,46 @@ def game_loop():
         # Event Handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                # stop music and exit program
                 pygame.mixer.music.stop()
                 pygame.quit()
                 sys.exit()
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    # open pause menu overlay
                     pause_choice = pause_menu(screen)
                     if pause_choice == "resume":
-                        # just continue playing; do nothing special
                         pass
                     elif pause_choice == "quit_to_menu":
-                        # stop game music and return to main menu
                         pygame.mixer.music.stop()
-                        return  # return to caller -> will bring up main menu again
+                        return  # back to menu
 
         keys = pygame.key.get_pressed()
         player.handle_input(keys)
         player.update()
 
-        # Bugs update
+        # Bugs update with smaller hitboxes
         for bug in bugs[:]:
             bug.update()
             bug.draw(screen)
 
-            # Collision with player
-            player_hit = bug.rect.colliderect(player.rect)
-            bullet_hit = any(bug.rect.colliderect(bullet["rect"]) for bullet in player.bullets)
+            # Smaller hitboxes
+            player_hitbox = pygame.Rect(
+                player.rect.x + player.rect.width * 0.2,
+                player.rect.y + player.rect.height * 0.2,
+                player.rect.width * 0.6,
+                player.rect.height * 0.6
+            )
+
+            bug_hitbox = pygame.Rect(
+                bug.rect.x + bug.rect.width * 0.2,
+                bug.rect.y + bug.rect.height * 0.2,
+                bug.rect.width * 0.6,
+                bug.rect.height * 0.6
+            )
+
+            # Player or bullet hits bug
+            player_hit = bug_hitbox.colliderect(player_hitbox)
+            bullet_hit = any(bug_hitbox.colliderect(bullet["rect"]) for bullet in player.bullets)
 
             if player_hit or bullet_hit:
                 correct = ask_question(screen)
@@ -162,14 +206,14 @@ def game_loop():
                     player.take_damage()
                     bugs.remove(bug)
 
-                # Remove bullets that hit the bug
+                # Remove bullets that hit bug
                 for bullet in player.bullets[:]:
-                    if bug.rect.colliderect(bullet["rect"]):
+                    if bug_hitbox.colliderect(bullet["rect"]):
                         player.bullets.remove(bullet)
 
-            # Bug bullets collision with player
+            # Bug bullets hitting player
             for b_bullet in bug.bullets[:]:
-                if player.rect.colliderect(b_bullet):
+                if player_hitbox.colliderect(b_bullet):
                     bug.bullets.remove(b_bullet)
                     correct = ask_question(screen)
                     if correct:
@@ -179,7 +223,7 @@ def game_loop():
                         play_incorrect()
                         player.take_damage()
 
-        # Update explosions
+        # Explosions
         for explosion in explosions[:]:
             explosion.update()
             explosion.draw(screen)
@@ -199,11 +243,14 @@ if __name__ == "__main__":
     while True:
         choice = menu_loop()
         if choice == "game":
-
-            game_loop()
+            result = game_loop()
+            if result == "retry":
+                continue  # Restart game
+            elif result == "quit":
+                pygame.quit()
+                sys.exit()
         elif choice in ("quit", "exit"):
             pygame.quit()
             sys.exit()
         else:
-
             continue

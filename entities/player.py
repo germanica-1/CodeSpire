@@ -2,6 +2,7 @@ import pygame
 import random
 from utils.colors import BLUE, GREEN
 
+
 class Player:
     def __init__(self, x, y):
         # Load player spaceship image
@@ -9,7 +10,7 @@ class Player:
         self.image = pygame.transform.rotate(self.image, 360)  # vertical orientation
         self.image = pygame.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center=(x, y))
-        self.speed = 2.5 # player speed
+        self.speed = 3.5  # player speed
 
         # Health & shield
         self.health = 3
@@ -24,7 +25,14 @@ class Player:
 
         # Load bullet image
         self.bullet_image = pygame.image.load("assets/images/laserBullet.png").convert_alpha()
-        self.bullet_image = pygame.transform.scale(self.bullet_image, (30, 60))  # smaller so it fits better
+        self.bullet_image = pygame.transform.scale(self.bullet_image, (40, 60))  # smaller so it fits better
+
+        # Load shield images
+        self.shield_icon = pygame.image.load("assets/images/shield_icon.png").convert_alpha()
+        self.shield_icon = pygame.transform.scale(self.shield_icon, (140, 140))
+
+        self.shield_aura = pygame.image.load("assets/images/shield_aura.png").convert_alpha()
+        self.shield_aura = pygame.transform.scale(self.shield_aura, (120, 120))  # Slightly larger than player ship
 
         # Load shooting sound
         self.shoot_sound = pygame.mixer.Sound("assets/sounds/player_shoot_1.mp3")
@@ -69,7 +77,7 @@ class Player:
             print(f"Player damaged! Health: {self.health}")
 
     def get_shield_chance(self):
-        if random.random() < 0.2:
+        if random.random() < 0.35:
             self.has_shield = True
             print("Shield obtained!")
 
@@ -84,10 +92,17 @@ class Player:
         # Draw player
         screen.blit(self.image, self.rect)
 
+        # Draw shield aura if active
+        if self.has_shield:
+            shield_rect = self.shield_aura.get_rect(center=self.rect.center)
+            screen.blit(self.shield_aura, shield_rect)
+
         # Draw bullets using image
         for bullet in self.bullets:
             screen.blit(bullet["image"], bullet["rect"])
 
-        # Draw shield indicator
+    def draw_shield_icon(self, screen):
+        """Draw the shield icon near the health bar"""
         if self.has_shield:
-            pygame.draw.rect(screen, GREEN, self.rect, 3)
+            # adjust position depending on where your health bar is drawn
+            screen.blit(self.shield_icon, (120, -25))
