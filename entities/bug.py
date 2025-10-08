@@ -1,6 +1,6 @@
 import pygame
 import random
-from utils.colors import RED  # still useful if you keep debug colors
+from utils.colors import RED  # optional, still used for debugging
 
 class Bug:
     def __init__(self, x, y, can_shoot=False):
@@ -17,6 +17,10 @@ class Bug:
         # Load enemy bullet image
         self.bullet_image = pygame.image.load("assets/images/enemyBullet.png").convert_alpha()
         self.bullet_image = pygame.transform.scale(self.bullet_image, (30, 30))
+
+        # --- Load SFX ---
+        self.shoot_sfx = pygame.mixer.Sound("assets/sounds/player_shoot_1.mp3")
+        self.shoot_sfx.set_volume(0.5)  # adjust volume (0.0–1.0)
 
         # Shooting attributes
         self.can_shoot = can_shoot
@@ -49,6 +53,9 @@ class Bug:
         # Create bullet rect (positioned below the bug)
         bullet_rect = self.bullet_image.get_rect(center=(self.rect.centerx, self.rect.bottom))
         self.bullets.append(bullet_rect)
+
+        # --- Play SFX when shooting ---
+        self.shoot_sfx.play()
 
     def draw(self, screen):
         # Draw the bug
