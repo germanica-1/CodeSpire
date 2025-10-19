@@ -20,7 +20,7 @@ class Bug:
 
         # --- Load SFX ---
         self.shoot_sfx = pygame.mixer.Sound("assets/sounds/player_shoot_1.mp3")
-        self.shoot_sfx.set_volume(0.5)  # adjust volume (0.0–1.0)
+        self.shoot_sfx.set_volume(0.2)  # adjust volume (0.0–1.0)
 
         # Shooting attributes
         self.can_shoot = can_shoot

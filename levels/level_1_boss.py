@@ -293,7 +293,7 @@ class Level1Boss:
         if self.health <= 0:
             self.health = 0
             self.alive = False
-            self.victory = True
+        
             self.dying = True
             self.last_death_update = pygame.time.get_ticks()
             return True

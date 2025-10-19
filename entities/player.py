@@ -1,41 +1,63 @@
 import pygame
 import random
+import os
 from utils.colors import BLUE, GREEN
-
 
 class Player:
     def __init__(self, x, y):
         # Load player spaceship image
         self.image = pygame.image.load("assets/images/Ship6.png").convert_alpha()
-        self.image = pygame.transform.rotate(self.image, 360)  # vertical orientation
+        self.image = pygame.transform.rotate(self.image, 360)
         self.image = pygame.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center=(x, y))
-        self.speed = 3.5  # player speed
+        self.speed = 3.5
 
         # Health & shield
         self.health = 3
         self.max_health = 3
         self.has_shield = False
 
-        # Shooting for player
-        self.bullets = []  # each bullet will be a dict with rect and image
+        # Shooting system
+        self.bullets = []
         self.can_shoot = True
         self.shoot_cooldown = 300
         self.last_shot_time = 0
+        self.shoot_sound = pygame.mixer.Sound("assets/sounds/player_shoot_1.mp3")
 
-        # Load bullet image
+        # Overheat system
+        self.shot_count = 0
+        self.max_shots_before_delay = 5
+        self.overheat_delay = 3000
+        self.overheat_start_time = 0
+        self.overheated = False
+
+        # Bullet image
         self.bullet_image = pygame.image.load("assets/images/laserBullet.png").convert_alpha()
-        self.bullet_image = pygame.transform.scale(self.bullet_image, (40, 60))  # smaller so it fits better
+        self.bullet_image = pygame.transform.scale(self.bullet_image, (40, 60))
 
-        # Load shield images
+        # Shield images
         self.shield_icon = pygame.image.load("assets/images/shield_icon.png").convert_alpha()
         self.shield_icon = pygame.transform.scale(self.shield_icon, (140, 140))
-
         self.shield_aura = pygame.image.load("assets/images/shield_aura.png").convert_alpha()
-        self.shield_aura = pygame.transform.scale(self.shield_aura, (120, 120))  # Slightly larger than player ship
+        self.shield_aura = pygame.transform.scale(self.shield_aura, (120, 120))
 
-        # Load shooting sound
-        self.shoot_sound = pygame.mixer.Sound("assets/sounds/player_shoot_1.mp3")
+        # 🔥 Reload animation setup (smaller)
+        self.reload_frames = self.load_reload_frames("assets/images/reload_animation")
+        self.current_reload_frame = 0
+        self.reload_frame_time = 170
+        self.last_reload_frame_time = 0
+
+    def load_reload_frames(self, folder_path):
+        """Load reload animation frames in correct order (0–5)."""
+        frames = []
+        for i in range(6):
+            filename = f"frame_{i}_delay-0.17s.png"
+            path = os.path.join(folder_path, filename)
+            if os.path.exists(path):
+                img = pygame.image.load(path).convert_alpha()
+                img = pygame.transform.scale(img, (50, 50))  # 🔽 smaller size
+                frames.append(img)
+        return frames
 
     def handle_input(self, keys):
         current_time = pygame.time.get_ticks()
@@ -50,23 +72,74 @@ class Player:
         if keys[pygame.K_DOWN] and self.rect.bottom < 600:
             self.rect.y += self.speed
 
-        # Shoot on single key press
-        if keys[pygame.K_SPACE] and self.can_shoot:
-            self.shoot()
-            self.can_shoot = False
-            self.last_shot_time = current_time
+        # Overheat cooldown
+        if self.overheated:
+            if current_time - self.overheat_start_time >= self.overheat_delay:
+                self.overheated = False
+                self.shot_count = 0
+                self.can_shoot = True
+                self.current_reload_frame = 0
 
-        # Reset shooting after cooldown
+        # Shooting
+        if not self.overheated:
+            if keys[pygame.K_SPACE] and self.can_shoot:
+                self.shoot()
+                self.can_shoot = False
+                self.last_shot_time = current_time
+                self.shot_count += 1
+
+                if self.shot_count >= self.max_shots_before_delay:
+                    self.overheated = True
+                    self.overheat_start_time = current_time
+                    self.last_reload_frame_time = current_time
+                    self.current_reload_frame = 0
+                    print("⚠️ Overheated! Reloading...")
+
+        # Reset cooldown
         if not self.can_shoot and current_time - self.last_shot_time > self.shoot_cooldown:
             self.can_shoot = True
 
     def shoot(self):
-        # Play shooting sound
         self.shoot_sound.play()
-
-        # Create bullet as a dict containing rect and image
         bullet_rect = self.bullet_image.get_rect(center=(self.rect.centerx, self.rect.top))
         self.bullets.append({"rect": bullet_rect, "image": self.bullet_image})
+
+    def update(self):
+        current_time = pygame.time.get_ticks()
+
+        # Move bullets
+        for bullet in self.bullets[:]:
+            bullet["rect"].y -= 7
+            if bullet["rect"].y < 0:
+                self.bullets.remove(bullet)
+
+        # Reload animation
+        if self.overheated and self.reload_frames:
+            if current_time - self.last_reload_frame_time > self.reload_frame_time:
+                self.last_reload_frame_time = current_time
+                self.current_reload_frame += 1
+                if self.current_reload_frame >= len(self.reload_frames):
+                    self.current_reload_frame = 0
+
+    def draw(self, screen):
+        # Player
+        screen.blit(self.image, self.rect)
+
+        # Shield aura
+        if self.has_shield:
+            shield_rect = self.shield_aura.get_rect(center=self.rect.center)
+            screen.blit(self.shield_aura, shield_rect)
+
+        # Bullets
+        for bullet in self.bullets:
+            screen.blit(bullet["image"], bullet["rect"])
+
+        # 🔥 Smaller reload animation above player
+        if self.overheated and self.reload_frames:
+            frame = self.reload_frames[self.current_reload_frame]
+            # lowered the height offset for closer positioning
+            frame_rect = frame.get_rect(center=(self.rect.centerx, self.rect.top - 25))
+            screen.blit(frame, frame_rect)
 
     def take_damage(self):
         if self.has_shield:
@@ -81,28 +154,6 @@ class Player:
             self.has_shield = True
             print("Shield obtained!")
 
-    def update(self):
-        # Move bullets
-        for bullet in self.bullets[:]:
-            bullet["rect"].y -= 7
-            if bullet["rect"].y < 0:
-                self.bullets.remove(bullet)
-
-    def draw(self, screen):
-        # Draw player
-        screen.blit(self.image, self.rect)
-
-        # Draw shield aura if active
-        if self.has_shield:
-            shield_rect = self.shield_aura.get_rect(center=self.rect.center)
-            screen.blit(self.shield_aura, shield_rect)
-
-        # Draw bullets using image
-        for bullet in self.bullets:
-            screen.blit(bullet["image"], bullet["rect"])
-
     def draw_shield_icon(self, screen):
-        """Draw the shield icon near the health bar"""
         if self.has_shield:
-            # adjust position depending on where your health bar is drawn
             screen.blit(self.shield_icon, (120, -25))

@@ -1,9 +1,8 @@
 import pygame
-from challenges.challenge_handler import get_question
 
-def ask_question(screen):
+def ask_question(screen, question_func):
     """Ask a question on screen, return True if correct, False if wrong/quit"""
-    question_data = get_question()
+    question_data = question_func()  # uses the provided function (can be Level1 or Level2)
     question = question_data["question"]
     answer = question_data["answer"]
 
@@ -15,7 +14,7 @@ def ask_question(screen):
     while input_active:
         screen.fill((0, 0, 0))
 
-        # Render question + user input
+        # Render question and user input
         q_surf = font.render(question, True, (255, 255, 255))
         a_surf = font.render(user_text, True, (255, 255, 0))
 
@@ -37,4 +36,3 @@ def ask_question(screen):
                     user_text += event.unicode
 
         clock.tick(30)
-        
