@@ -41,7 +41,7 @@ class Player:
         self.shield_aura = pygame.image.load("assets/images/shield_aura.png").convert_alpha()
         self.shield_aura = pygame.transform.scale(self.shield_aura, (120, 120))
 
-        # 🔥 Reload animation setup (smaller)
+        #Reload animation setup 
         self.reload_frames = self.load_reload_frames("assets/images/reload_animation")
         self.current_reload_frame = 0
         self.reload_frame_time = 170
@@ -55,7 +55,7 @@ class Player:
             path = os.path.join(folder_path, filename)
             if os.path.exists(path):
                 img = pygame.image.load(path).convert_alpha()
-                img = pygame.transform.scale(img, (50, 50))  # 🔽 smaller size
+                img = pygame.transform.scale(img, (50, 50)) 
                 frames.append(img)
         return frames
 
@@ -93,7 +93,7 @@ class Player:
                     self.overheat_start_time = current_time
                     self.last_reload_frame_time = current_time
                     self.current_reload_frame = 0
-                    print("⚠️ Overheated! Reloading...")
+                    print("Overheated! Reloading...")
 
         # Reset cooldown
         if not self.can_shoot and current_time - self.last_shot_time > self.shoot_cooldown:
@@ -134,7 +134,7 @@ class Player:
         for bullet in self.bullets:
             screen.blit(bullet["image"], bullet["rect"])
 
-        # 🔥 Smaller reload animation above player
+        # Smaller reload animation above player
         if self.overheated and self.reload_frames:
             frame = self.reload_frames[self.current_reload_frame]
             # lowered the height offset for closer positioning

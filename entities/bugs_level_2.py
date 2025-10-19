@@ -1,6 +1,6 @@
 import pygame
 import random
-from utils.colors import RED  # optional for debug visuals
+from utils.colors import RED  
 
 class Bug_Level_2:
     def __init__(self, x, y, can_shoot=True):
@@ -89,5 +89,4 @@ class Bug_Level_2:
         screen.blit(self.image, self.rect)
         for bullet in self.bullets:
             screen.blit(self.bullet_image, bullet)
-            # Debug bullet hitbox (optional)
-            # pygame.draw.rect(screen, RED, bullet, 1)
+

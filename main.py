@@ -231,6 +231,7 @@ def transition_to_level_2(screen):
 def level_2_loop(screen):
     """Level 2 loop — CSS questions."""
     from entities.bugs_level_2 import Bug_Level_2
+    from levels.level_2_boss import Level2Boss  
 
     try:
         pygame.mixer.music.load("assets/sounds/level2backgroundmusic.mp3")
@@ -251,6 +252,7 @@ def level_2_loop(screen):
     explosions = []
     bugs = [Bug_Level_2(random.randint(50, WIDTH - 50), random.randint(-300, -50)) for _ in range(6)]
     bugs_destroyed = 0
+    boss = None
     running = True
 
     while running:
@@ -262,13 +264,18 @@ def level_2_loop(screen):
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 choice = pause_menu(screen)
                 if choice == "quit_to_menu":
+                    if boss:
+                        boss.stop_boss_sound()
                     pygame.mixer.music.stop()
                     return
 
         if player.health <= 0:
+            if boss:
+                boss.stop_boss_sound()
             pygame.mixer.music.stop()
             return game_over_screen(screen)
 
+        # --- Background ---
         screen.blit(bg, (0, 0))
         for star in stars:
             star.update()
@@ -278,59 +285,156 @@ def level_2_loop(screen):
         player.handle_input(keys)
         player.update()
 
-        for bug in bugs[:]:
-            bug.update()
-            bug.draw(screen)
+        # --- Normal bugs section ---
+        if not boss:  # Only spawn bugs before boss appears
+            for bug in bugs[:]:
+                bug.update()
+                bug.draw(screen)
 
-            player_hitbox = player.rect.inflate(-player.rect.width * 0.4, -player.rect.height * 0.4)
-            bug_hitbox = bug.rect.inflate(-bug.rect.width * 0.4, -bug.rect.height * 0.4)
+                player_hitbox = player.rect.inflate(-player.rect.width * 0.4, -player.rect.height * 0.4)
+                bug_hitbox = bug.rect.inflate(-bug.rect.width * 0.4, -bug.rect.height * 0.4)
 
-            player_hit = bug_hitbox.colliderect(player_hitbox)
-            bullet_hit = any(bug_hitbox.colliderect(b["rect"]) for b in player.bullets)
+                player_hit = bug_hitbox.colliderect(player_hitbox)
+                bullet_hit = any(bug_hitbox.colliderect(b["rect"]) for b in player.bullets)
 
-            if player_hit or bullet_hit:
-                correct = ask_question(screen, get_question_level2)
-                if correct:
-                    play_correct()
-                    explosions.append(Explosion(bug.rect.centerx, bug.rect.centery))
-                    bugs.remove(bug)
-                    player.get_shield_chance()
-                    bugs_destroyed += 1
-                else:
-                    play_incorrect()
-                    explosions.append(Explosion(bug.rect.centerx, bug.rect.centery))
-                    player.take_damage()
-                    bugs.remove(bug)
-                for b in player.bullets[:]:
-                    if bug_hitbox.colliderect(b["rect"]):
-                        player.bullets.remove(b)
-
-            for b_bullet in bug.bullets[:]:
-                if player_hitbox.colliderect(b_bullet):
-                    bug.bullets.remove(b_bullet)
+                if player_hit or bullet_hit:
                     correct = ask_question(screen, get_question_level2)
                     if correct:
                         play_correct()
+                        explosions.append(Explosion(bug.rect.centerx, bug.rect.centery))
+                        bugs.remove(bug)
+                        player.get_shield_chance()
+                        bugs_destroyed += 1
+                    else:
+                        play_incorrect()
+                        explosions.append(Explosion(bug.rect.centerx, bug.rect.centery))
+                        player.take_damage()
+                        bugs.remove(bug)
+                    for b in player.bullets[:]:
+                        if bug_hitbox.colliderect(b["rect"]):
+                            player.bullets.remove(b)
+
+                for b_bullet in bug.bullets[:]:
+                    if player_hitbox.colliderect(b_bullet):
+                        bug.bullets.remove(b_bullet)
+                        correct = ask_question(screen, get_question_level2)
+                        if correct:
+                            play_correct()
+                            player.get_shield_chance()
+                        else:
+                            play_incorrect()
+                            player.take_damage()
+
+            # --- Respawn bugs if below 4 ---
+            if len(bugs) < 4 and random.random() < 0.02:
+                bugs.append(Bug_Level_2(random.randint(50, WIDTH - 50), random.randint(-150, -50)))
+
+            # --- Spawn Boss after 5 kills ---
+            if bugs_destroyed >= 5 and not boss:
+                # Clear bugs before boss
+                for bug in bugs[:]:
+                    explosions.append(Explosion(bug.rect.centerx, bug.rect.centery))
+                    bugs.remove(bug)
+
+                pygame.mixer.music.stop()  # Stop bgm
+                boss = Level2Boss(WIDTH, HEIGHT)
+                bugs_destroyed = 0
+
+        # --- Boss fight ---
+        if boss:
+            boss.update(player.rect)
+            boss.draw(screen)
+
+            # --- Minion logic (collision + behavior) ---
+            for minion in boss.minions[:]:
+                minion.update()
+                minion.draw(screen)
+
+                player_hitbox = player.rect.inflate(-player.rect.width * 0.4, -player.rect.height * 0.4)
+                minion_hitbox = minion.rect.inflate(-minion.rect.width * 0.4, -minion.rect.height * 0.4)
+
+                player_hit = minion_hitbox.colliderect(player_hitbox)
+                bullet_hit = any(minion_hitbox.colliderect(b["rect"]) for b in player.bullets)
+
+                if player_hit or bullet_hit:
+                    correct = ask_question(screen, get_question_level2)
+                    if correct:
+                        play_correct()
+                        explosions.append(Explosion(minion.rect.centerx, minion.rect.centery))
+                        boss.minions.remove(minion)
                         player.get_shield_chance()
                     else:
                         play_incorrect()
+                        explosions.append(Explosion(minion.rect.centerx, minion.rect.centery))
+                        player.take_damage()
+                        boss.minions.remove(minion)
+                    for b in player.bullets[:]:
+                        if minion_hitbox.colliderect(b["rect"]):
+                            player.bullets.remove(b)
+
+                # Check if minion bullets hit player
+                for b_bullet in minion.bullets[:]:
+                    if player_hitbox.colliderect(b_bullet):
+                        minion.bullets.remove(b_bullet)
+                        correct = ask_question(screen, get_question_level2)
+                        if correct:
+                            play_correct()
+                            player.get_shield_chance()
+                        else:
+                            play_incorrect()
+                            player.take_damage()
+
+            # --- Boss bullets collision ---
+            for b_rect in boss.bullets[:]:
+                if player.rect.colliderect(b_rect):
+                    boss.bullets.remove(b_rect)
+                    correct = ask_question(screen, get_question_level2)
+                    if correct:
+                        play_correct()
+                        boss.reset_shooting_rate()
+                        player.get_shield_chance()
+                    else:
+                        play_incorrect()
+                        boss.reset_shooting_rate()
                         player.take_damage()
 
-        if len(bugs) < 4 and random.random() < 0.02:
-            bugs.append(Bug_Level_2(random.randint(50, WIDTH - 50), random.randint(-150, -50)))
+            # --- Player bullets hitting boss ---
+            for b in player.bullets[:]:
+                if boss.rect.colliderect(b["rect"]) and boss.alive:
+                    player.bullets.remove(b)
+                    correct = ask_question(screen, get_question_level2)
+                    if correct:
+                        play_correct()
+                        boss.reset_shooting_rate()
+                        boss_hit = boss.hit()
+                        if boss_hit:
+                            explosions.append(Explosion(boss.rect.centerx, boss.rect.centery))
+                    else:
+                        play_incorrect()
+                        boss.reset_shooting_rate()
+                        player.take_damage()
 
+            # --- Victory ---
+            if boss.victory:
+                boss.stop_boss_sound()
+                pygame.mixer.music.fadeout(1000)
+
+        # --- Explosions ---
         for exp in explosions[:]:
             exp.update()
             exp.draw(screen)
             if exp.finished:
                 explosions.remove(exp)
 
+        # --- Player + UI ---
         player.draw(screen)
         draw_ui(screen, player)
         pygame.display.flip()
 
     pygame.mixer.music.fadeout(1000)
     return
+
+
 
 
 def game_loop():
