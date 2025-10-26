@@ -11,6 +11,7 @@ class Player:
         self.image = pygame.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center=(x, y))
         self.speed = 3.5
+        self.score = 0  # <-- Add this lin
 
         # Health & shield
         self.health = 3

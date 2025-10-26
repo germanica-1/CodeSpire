@@ -2,18 +2,18 @@ import pygame
 import random
 from utils.colors import RED  
 
-class Bug_Level_2:
+class Bug_Level_3:
     def __init__(self, x, y, can_shoot=True):
-        # Randomly pick between 3 ships for level 2 variety
+
         ship_image = random.choice([
             "assets/images/Ship1.png",
             "assets/images/Ship2.png",
             "assets/images/Ship3.png"
         ])
 
-        # Load and transform the bug spaceship image
+
         self.image = pygame.image.load(ship_image).convert_alpha()
-        self.image = pygame.transform.rotate(self.image, 90)  # face downward
+        self.image = pygame.transform.rotate(self.image, 90)  
         self.image = pygame.transform.scale(self.image, (90, 90))
         self.rect = self.image.get_rect(center=(x, y))
 
@@ -31,7 +31,7 @@ class Bug_Level_2:
         self.shoot_cooldown = random.randint(500, 1500)
         self.last_shot_time = pygame.time.get_ticks()
 
-        # Load SFX (optional)
+        
         try:
             self.shoot_sfx = pygame.mixer.Sound("assets/sounds/player_shoot_1.mp3")
             self.shoot_sfx.set_volume(0.2)
@@ -39,17 +39,17 @@ class Bug_Level_2:
             self.shoot_sfx = None
 
     def update(self):
-        # Zigzag or drifting horizontal movement
+        
         now = pygame.time.get_ticks()
         if now - self.direction_timer > self.direction_change_delay:
-            self.speed_x *= -1  # reverse horizontal direction
+            self.speed_x *= -1  
             self.direction_timer = now
             self.direction_change_delay = random.randint(500, 500)
 
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
 
-        # Wrap or reset if off-screen
+        
         if self.rect.top > 620:
             self.rect.y = random.randint(-200, -50)
             self.rect.x = random.randint(50, 750)
@@ -57,7 +57,7 @@ class Bug_Level_2:
         if self.rect.left < 0 or self.rect.right > 800:
             self.speed_x *= -1
 
-        # Shooting behavior
+        
         if self.can_shoot:
             current_time = pygame.time.get_ticks()
             if current_time - self.last_shot_time > self.shoot_cooldown:
@@ -65,18 +65,17 @@ class Bug_Level_2:
                 self.last_shot_time = current_time
                 self.shoot_cooldown = random.randint(1000, 2500)
 
-        # Update bullets (move downward)
         for bullet in self.bullets[:]:
             bullet.y += 6
             if bullet.y > 600:
                 self.bullets.remove(bullet)
 
     def shoot(self):
-        # Create a bullet slightly below the ship
+        
         bullet_rect = self.bullet_image.get_rect(center=(self.rect.centerx, self.rect.bottom))
         self.bullets.append(bullet_rect)
 
-        # Optional spread shot for tougher bugs (20% chance)
+        
         if random.random() < 0.2:
             left_bullet = self.bullet_image.get_rect(center=(self.rect.centerx - 20, self.rect.bottom))
             right_bullet = self.bullet_image.get_rect(center=(self.rect.centerx + 20, self.rect.bottom))

@@ -14,7 +14,7 @@ class Level2Boss:
 
         # --- Movement ---
         self.speed_y = 3
-        self.follow_speed = 6
+        self.follow_speed = 10
         self.target_y = 120
         self.screen_width = screen_width
         self.alive = True
@@ -36,7 +36,7 @@ class Level2Boss:
         self.bullet_image = pygame.transform.scale(self.bullet_image, (28, 28))
         self.bullets = []
         self.bullet_speeds = {}
-        self.shoot_cooldown = 2200
+        self.shoot_cooldown = 5000
         self.last_shot_time = pygame.time.get_ticks()
         self.paused_until = 0
 
@@ -47,7 +47,7 @@ class Level2Boss:
 
         # --- Name ---
         self.font = pygame.font.Font("assets/fonts/BoldPixels.ttf", 28)
-        self.name_surface = self.font.render("D’Aragon", True, (255, 255, 255))
+        self.name_surface = self.font.render("ExBim", True, (255, 255, 255))
         self.fade_alpha = 0
         self.fade_in_speed = 3
         self.fade_done = False
@@ -61,7 +61,7 @@ class Level2Boss:
 
         try:
             self.boss_passive_sound = pygame.mixer.Sound(
-                "assets/sounds/boss_sfx/level_1_boss/level_1_boss_passive.mp3"
+                "assets/sounds/boss_sfx/level_2_boss/level_2_boss_passive.mp3"
             )
             self.boss_passive_sound.set_volume(0.4)
         except:
@@ -152,6 +152,11 @@ class Level2Boss:
 
         if not self.alive:
             return
+# --- Prevent spawning or updating minions if dying or dead ---
+        if self.dying or self.victory or not self.alive:
+            self.minions.clear()
+            self.bullets.clear()
+            return
 
         # Entrance phase
         if self.rect.y < self.target_y:
@@ -231,6 +236,10 @@ class Level2Boss:
             if self.death_done_time == 0:
                 self.death_done_time = pygame.time.get_ticks()
                 self.stop_boss_sound()
+
+                for bug in self.minions:
+                    bug.frozen = True
+
             elif pygame.time.get_ticks() - self.death_done_time > 3000:
                 self.victory = True
             return
@@ -295,5 +304,12 @@ class Level2Boss:
             self.alive = False
             self.dying = True
             self.last_death_update = pygame.time.get_ticks()
+
+            # --- Stop spawning and clear all minions instantly ---
+            self.minions.clear()
+            self.bullets.clear()
+            self.stop_boss_sound()
+            self.last_minion_spawn = pygame.time.get_ticks() + 9999999  # disable spawn timer
+
             return True
         return False
