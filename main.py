@@ -58,7 +58,7 @@ def game_over_screen(screen):
                     return "retry"
                 elif event.key == pygame.K_q:
                     return "quit"
-
+                
 
 class Explosion:
     """Explosion animation."""
@@ -95,7 +95,7 @@ class Portal:
     """Animated portal that appears after boss death."""
     def __init__(self, x, y):
         self.frames = []
-        folder = "assets/images/portal_1"
+        folder = "assets/images/portal_2"
         if os.path.exists(folder):
             files = sorted(f for f in os.listdir(folder) if f.lower().endswith(".png"))
             for filename in files:
@@ -129,7 +129,7 @@ class Portal:
         screen.blit(self.image, self.rect)
 
 
-def prompt_confirm(screen, prompt_text="Proceed to level 2? (Y/N)"):
+def prompt_confirm(screen, prompt_text="Proceed to level 2? press (Y) to confirm"):
     """Display a simple Y/N prompt. Return True for Y, False for N."""
     font = pygame.font.Font(None, 36)
     small = pygame.font.Font(None, 28)
@@ -138,7 +138,7 @@ def prompt_confirm(screen, prompt_text="Proceed to level 2? (Y/N)"):
     overlay.fill((0, 0, 0))
 
     prompt_surf = font.render(prompt_text, True, (255, 255, 255))
-    hint = small.render("Press Y to confirm or N to cancel", True, (200, 200, 200))
+    hint = small.render("Press Y to confirm", True, (200, 200, 200))
 
     while True:
         clock.tick(FPS)
@@ -262,18 +262,20 @@ def transition_to_level_3(screen):
 
 
 def level_3_loop(screen):
-    """Playable Level 3 — player + Bug_Level_3 enemies + scrolling background + quiz logic."""
+    """Playable Level 3 — player + Bug_Level_3 enemies + boss fight + quiz logic."""
     from entities.bugs_level_3 import Bug_Level_3
-    from challenges.challenge_handler_level3 import get_question_level3  
-    # --- Load background ---
+    from challenges.challenge_handler_level3 import get_question_level3
+    from levels.level_3_boss import Level3Boss
 
+    # --- Load background music ---
     try:
-        pygame.mixer.music.load("assets/sounds/level2backgroundmusic.mp3")
-        pygame.mixer.music.set_volume(0.3)
+        pygame.mixer.music.load("assets/sounds/level3backgroundmusic.mp3")
+        pygame.mixer.music.set_volume(0.35)
         pygame.mixer.music.play(-1)
     except Exception:
         pass
 
+    # --- Load background ---
     try:
         bg = pygame.image.load("assets/images/menu/menu_background/level_3_map.png").convert()
         bg = pygame.transform.scale(bg, (WIDTH, HEIGHT))
@@ -281,21 +283,18 @@ def level_3_loop(screen):
         bg = pygame.Surface((WIDTH, HEIGHT))
         bg.fill((30, 30, 60))
 
-    # --- Player setup ---
+    # --- Setup ---
     player = Player(WIDTH // 2, HEIGHT - 80)
-
-    # --- Sprite groups & entities ---
-    bullets = pygame.sprite.Group()
-    enemies = [Bug_Level_3(random.randint(80, WIDTH - 80), random.randint(-250, -100)) for _ in range(5)]
-    explosions = []
     stars = [Star() for _ in range(100)]
+    enemies = [Bug_Level_3(random.randint(80, WIDTH - 80), random.randint(-250, -100)) for _ in range(6)]
+    explosions = []
+    boss = None
+    portal = None
+    boss_defeated = False
+    bugs_destroyed = 0
 
-    # --- Background scroll ---
     scroll_speed = 2
     bg_y = 0
-
-    # --- UI Font ---
-    font = pygame.font.Font("assets/fonts/BoldPixels.ttf", 28)
 
     fade_in(screen, duration=600)
     running = True
@@ -316,7 +315,6 @@ def level_3_loop(screen):
         bg_y = (bg_y + scroll_speed) % HEIGHT
         screen.blit(bg, (0, bg_y - HEIGHT))
         screen.blit(bg, (0, bg_y))
-
         for star in stars:
             star.update()
             star.draw(screen)
@@ -325,53 +323,116 @@ def level_3_loop(screen):
         keys = pygame.key.get_pressed()
         player.handle_input(keys)
         player.update()
-        bullets.update()
 
-        # --- Enemy Spawning ---
-        if len(enemies) < 5 and random.random() < 0.02:
-            enemies.append(Bug_Level_3(random.randint(50, WIDTH - 50), random.randint(-200, -50)))
+        # --- Enemy Phase (before boss) ---
+        if not boss and not boss_defeated:
+            for enemy in enemies[:]:
+                enemy.update()
+                enemy.draw(screen)
 
-        # --- Enemy Updates ---
-        for enemy in enemies[:]:
-            enemy.update()
-            enemy.draw(screen)
-            if enemy.rect.top > HEIGHT + 100:
-                enemies.remove(enemy)
+                # Check collisions
+                for bullet in player.bullets[:]:
+                    if bullet["rect"].colliderect(enemy.rect):
+                        player.bullets.remove(bullet)
+                        correct = ask_question(screen, get_question_level3)
+                        if correct:
+                            play_correct()
+                            explosions.append(Explosion(enemy.rect.centerx, enemy.rect.centery))
+                            enemies.remove(enemy)
+                            player.get_shield_chance()
+                            bugs_destroyed += 1
+                        else:
+                            play_incorrect()
+                            explosions.append(Explosion(enemy.rect.centerx, enemy.rect.centery))
+                            player.take_damage()
+                            enemies.remove(enemy)
+                        break
+                    # --- Enemy bullets hitting player ---
+                for e_bullet in enemy.bullets[:]:
+                    if player.rect.colliderect(e_bullet):
+                        enemy.bullets.remove(e_bullet)
+                        correct = ask_question(screen, get_question_level3)
+                        if correct:
+                            play_correct()
+                            player.get_shield_chance()
+                        else:
+                            play_incorrect()
+                            player.take_damage()
 
-        # --- Bullet vs Enemy ---
-        for bullet in bullets.copy():
-            for enemy in enemies.copy():
-                if bullet.rect.colliderect(enemy.rect):
-                    bullets.remove(bullet)
+                # Player collision with enemy
+                if player.rect.colliderect(enemy.rect):
                     correct = ask_question(screen, get_question_level3)
                     if correct:
                         play_correct()
                         explosions.append(Explosion(enemy.rect.centerx, enemy.rect.centery))
                         enemies.remove(enemy)
-                        player.get_shield_chance()
                     else:
                         play_incorrect()
-                        explosions.append(Explosion(enemy.rect.centerx, enemy.rect.centery))
                         player.take_damage()
+                        explosions.append(Explosion(enemy.rect.centerx, enemy.rect.centery))
                         enemies.remove(enemy)
-                    break
 
-        # --- Enemy Bullet vs Player ---
-        for enemy in enemies:
-            for e_bullet in enemy.bullets[:]:
-                if player.rect.colliderect(e_bullet):
-                    enemy.bullets.remove(e_bullet)
+            # Respawn enemies if below threshold
+            if len(enemies) < 5 and random.random() < 0.02:
+                enemies.append(Bug_Level_3(random.randint(50, WIDTH - 50), random.randint(-200, -50)))
+
+            # --- Spawn Boss after 8 enemies killed ---
+            if bugs_destroyed >= 8 and not boss:
+                for e in enemies[:]:
+                    explosions.append(Explosion(e.rect.centerx, e.rect.centery))
+                    enemies.remove(e)
+
+                pygame.mixer.music.fadeout(1000)
+                boss = Level3Boss(WIDTH, HEIGHT)
+                bugs_destroyed = 0
+
+        # --- Boss Phase ---
+        if boss:
+            boss.update(player.rect)
+            boss.draw(screen)
+
+            # Boss laser collision
+            if boss.check_laser_hit(player.rect):  # <-- use boss’s safe check
+                correct = ask_question(screen, get_question_level3)
+                if correct:
+                    play_correct()
+                    player.get_shield_chance()
+                else:
+                    play_incorrect()
+                    player.take_damage()
+
+            # Player bullets hitting boss
+            for bullet in player.bullets[:]:
+                if boss.rect.colliderect(bullet["rect"]):
+                    player.bullets.remove(bullet)
                     correct = ask_question(screen, get_question_level3)
                     if correct:
                         play_correct()
-                        player.get_shield_chance()
+                        hit = boss.hit()
+                        if hit:
+                            explosions.append(Explosion(boss.rect.centerx, boss.rect.centery))
                     else:
                         play_incorrect()
                         player.take_damage()
 
-        # --- Player Health Check ---
-        if player.health <= 0:
-            return game_over_screen(screen)
+            # If boss defeated
+            if boss.victory:
+                pygame.mixer.music.stop()
+                boss_defeated = True
+                boss = None
+                portal = Portal(WIDTH // 2, HEIGHT // 2)
+                print("Level 3 Boss defeated — portal spawned!")
+
+        # --- Portal Interaction ---
+        if portal:
+            portal.update()
+            portal.draw(screen)
+            if player.rect.colliderect(portal.rect):
+                proceed = prompt_confirm(screen, "Congratulations! Proceed to Ending? press (Y) to confirm")
+                if proceed:
+                    pygame.mixer.music.fadeout(600)
+                    fade_out(screen, duration=600)
+                    return "ending"
 
         # --- Explosions ---
         for exp in explosions[:]:
@@ -380,12 +441,14 @@ def level_3_loop(screen):
             if exp.finished:
                 explosions.remove(exp)
 
-        # --- Drawing ---
-        bullets.draw(screen)
+        # --- Draw Player + UI ---
         player.draw(screen)
         draw_ui(screen, player)
-
         pygame.display.flip()
+
+        # --- Player Death ---
+        if player.health <= 0:
+            return game_over_screen(screen)
 
     fade_out(screen, duration=600)
 
@@ -603,12 +666,12 @@ def level_2_loop(screen):
             portal.update()
             portal.draw(screen)
             if player.rect.colliderect(portal.rect):
-                proceed = prompt_confirm(screen, "Proceed to level 3? (Y/N)")
+                proceed = prompt_confirm(screen, "Proceed to level 3? press (Y) to confirm")
                 if proceed:
-                    pygame.mixer.music.fadeout(600)
-                    transition_to_level_3(screen)
-                    fade_out(screen, duration=600)
-                    return "level3"
+                   if proceed:
+                     pygame.mixer.music.stop()
+                     return "level3"
+
 
         # --- Explosions ---
         for exp in explosions[:]:
@@ -761,7 +824,7 @@ def game_loop():
             portal.update()
             portal.draw(screen)
             if player.rect.colliderect(portal.rect):
-                proceed = prompt_confirm(screen, "Proceed to level 2? (Y/N)")
+                proceed = prompt_confirm(screen, "Proceed to level 2? press (Y) to confirm")
                 if proceed:
                     pygame.mixer.music.fadeout(600)
                     fade_out(screen, duration=600)

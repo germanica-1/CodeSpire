@@ -10,7 +10,7 @@ class Player:
         self.image = pygame.transform.rotate(self.image, 360)
         self.image = pygame.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center=(x, y))
-        self.speed = 3.5
+        self.speed = 4.5
         self.score = 0  # <-- Add this lin
 
         # Health & shield
@@ -64,13 +64,13 @@ class Player:
         current_time = pygame.time.get_ticks()
 
         # Movement
-        if keys[pygame.K_LEFT] and self.rect.left > 0:
+        if keys[pygame.K_a] and self.rect.left > 0:
             self.rect.x -= self.speed
-        if keys[pygame.K_RIGHT] and self.rect.right < 800:
+        if keys[pygame.K_d] and self.rect.right < 800:
             self.rect.x += self.speed
-        if keys[pygame.K_UP] and self.rect.top > 0:
+        if keys[pygame.K_w] and self.rect.top > 0:
             self.rect.y -= self.speed
-        if keys[pygame.K_DOWN] and self.rect.bottom < 600:
+        if keys[pygame.K_s] and self.rect.bottom < 600:
             self.rect.y += self.speed
 
         # Overheat cooldown

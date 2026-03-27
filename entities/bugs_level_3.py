@@ -4,16 +4,16 @@ from utils.colors import RED
 
 class Bug_Level_3:
     def __init__(self, x, y, can_shoot=True):
-
+        # Randomly pick between 3 ships for level 3 variety
         ship_image = random.choice([
-            "assets/images/Ship1.png",
-            "assets/images/Ship2.png",
-            "assets/images/Ship3.png"
+            "assets/images/Ship_6.png",
+            "assets/images/Ship_7.png",
+            "assets/images/Ship_8.png"
         ])
 
-
+        # Load and transform the bug spaceship image
         self.image = pygame.image.load(ship_image).convert_alpha()
-        self.image = pygame.transform.rotate(self.image, 90)  
+        self.image = pygame.transform.rotate(self.image, 180)  # face downward
         self.image = pygame.transform.scale(self.image, (90, 90))
         self.rect = self.image.get_rect(center=(x, y))
 
@@ -28,10 +28,12 @@ class Bug_Level_3:
         self.bullets = []
         self.bullet_image = pygame.image.load("assets/images/enemyBullet.png").convert_alpha()
         self.bullet_image = pygame.transform.scale(self.bullet_image, (28, 28))
-        self.shoot_cooldown = random.randint(500, 1500)
+        
+        # 🔥 Increased cooldown
+        self.shoot_cooldown = random.randint(2000, 3500)
         self.last_shot_time = pygame.time.get_ticks()
 
-        
+        # Load SFX (optional)
         try:
             self.shoot_sfx = pygame.mixer.Sound("assets/sounds/player_shoot_1.mp3")
             self.shoot_sfx.set_volume(0.2)
@@ -39,17 +41,17 @@ class Bug_Level_3:
             self.shoot_sfx = None
 
     def update(self):
-        
+        # Zigzag or drifting horizontal movement
         now = pygame.time.get_ticks()
         if now - self.direction_timer > self.direction_change_delay:
-            self.speed_x *= -1  
+            self.speed_x *= -1
             self.direction_timer = now
             self.direction_change_delay = random.randint(500, 500)
 
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
 
-        
+        # Reset if off-screen
         if self.rect.top > 620:
             self.rect.y = random.randint(-200, -50)
             self.rect.x = random.randint(50, 750)
@@ -57,29 +59,24 @@ class Bug_Level_3:
         if self.rect.left < 0 or self.rect.right > 800:
             self.speed_x *= -1
 
-        
+        # 🔥 Only shoot if NO bullet currently exists
         if self.can_shoot:
             current_time = pygame.time.get_ticks()
-            if current_time - self.last_shot_time > self.shoot_cooldown:
+            if len(self.bullets) == 0 and current_time - self.last_shot_time > self.shoot_cooldown:
                 self.shoot()
                 self.last_shot_time = current_time
-                self.shoot_cooldown = random.randint(1000, 2500)
+                self.shoot_cooldown = random.randint(2000, 3500)  # longer cooldown
 
+        # Update bullets
         for bullet in self.bullets[:]:
             bullet.y += 6
             if bullet.y > 600:
                 self.bullets.remove(bullet)
 
     def shoot(self):
-        
+        # 🔥 Only 1 bullet now
         bullet_rect = self.bullet_image.get_rect(center=(self.rect.centerx, self.rect.bottom))
         self.bullets.append(bullet_rect)
-
-        
-        if random.random() < 0.2:
-            left_bullet = self.bullet_image.get_rect(center=(self.rect.centerx - 20, self.rect.bottom))
-            right_bullet = self.bullet_image.get_rect(center=(self.rect.centerx + 20, self.rect.bottom))
-            self.bullets.extend([left_bullet, right_bullet])
 
         if self.shoot_sfx:
             self.shoot_sfx.play()
@@ -88,4 +85,3 @@ class Bug_Level_3:
         screen.blit(self.image, self.rect)
         for bullet in self.bullets:
             screen.blit(self.bullet_image, bullet)
-

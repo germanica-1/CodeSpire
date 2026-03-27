@@ -1,6 +1,5 @@
 import pygame
 import random
-from utils.colors import RED  
 
 class Bug_Level_2:
     def __init__(self, x, y, can_shoot=True):
@@ -28,7 +27,7 @@ class Bug_Level_2:
         self.bullets = []
         self.bullet_image = pygame.image.load("assets/images/enemyBullet.png").convert_alpha()
         self.bullet_image = pygame.transform.scale(self.bullet_image, (28, 28))
-        self.shoot_cooldown = random.randint(500, 1500)
+        self.shoot_cooldown = random.randint(2000, 4000)  # increased cooldown
         self.last_shot_time = pygame.time.get_ticks()
 
         # Load SFX (optional)
@@ -44,7 +43,7 @@ class Bug_Level_2:
         if now - self.direction_timer > self.direction_change_delay:
             self.speed_x *= -1  # reverse horizontal direction
             self.direction_timer = now
-            self.direction_change_delay = random.randint(500, 500)
+            self.direction_change_delay = random.randint(500, 1000)
 
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
@@ -63,7 +62,7 @@ class Bug_Level_2:
             if current_time - self.last_shot_time > self.shoot_cooldown:
                 self.shoot()
                 self.last_shot_time = current_time
-                self.shoot_cooldown = random.randint(1000, 2500)
+                self.shoot_cooldown = random.randint(2000, 4000)  # maintain increased cooldown
 
         # Update bullets (move downward)
         for bullet in self.bullets[:]:
@@ -72,15 +71,9 @@ class Bug_Level_2:
                 self.bullets.remove(bullet)
 
     def shoot(self):
-        # Create a bullet slightly below the ship
+        # Create only a single bullet straight down
         bullet_rect = self.bullet_image.get_rect(center=(self.rect.centerx, self.rect.bottom))
         self.bullets.append(bullet_rect)
-
-        # Optional spread shot for tougher bugs (20% chance)
-        if random.random() < 0.2:
-            left_bullet = self.bullet_image.get_rect(center=(self.rect.centerx - 20, self.rect.bottom))
-            right_bullet = self.bullet_image.get_rect(center=(self.rect.centerx + 20, self.rect.bottom))
-            self.bullets.extend([left_bullet, right_bullet])
 
         if self.shoot_sfx:
             self.shoot_sfx.play()
@@ -89,4 +82,3 @@ class Bug_Level_2:
         screen.blit(self.image, self.rect)
         for bullet in self.bullets:
             screen.blit(self.bullet_image, bullet)
-
