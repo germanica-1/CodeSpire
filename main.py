@@ -32,6 +32,8 @@ def draw_ui(screen, player):
     fill = (player.health / player.max_health) * bar_width
     pygame.draw.rect(screen, (255, 0, 0), (10, 40, fill, bar_height))
     pygame.draw.rect(screen, (255, 255, 255), (10, 40, bar_width, bar_height), 2)
+    
+
 
     if player.has_shield:
         player.draw_shield_icon(screen)
